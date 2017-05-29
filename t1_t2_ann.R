@@ -21,7 +21,7 @@ findTimeToNearestHbA1c <- function(dmList_LinkId, diagnosisDate_unix) {
 
 # set index date
 index <- "2017-01-01"
-paramFromDiagnosisWindowMonths = 6
+paramFromDiagnosisWindowMonths = 12
 paramFromDiagnosisWindowSeconds = paramFromDiagnosisWindowMonths * (60*60*24*(365.25/12))
 
 # diagnosisDataset<-read.csv("../GlCoSy/SDsource/diagnosisDateDeathDate.txt")
@@ -69,16 +69,14 @@ cleanDBPData$timeSeriesDataPoint <- cleanDBPData$dbpNumeric
   colnames(dbp_DT_forMerge) <- c("LinkId", "dbp_dateplustime1", "dbpNumeric")
 
 cleanBMIData <- read.csv("~/R/GlCoSy/SD_workingSource/BMISetDTclean.csv", sep=",", header = TRUE, row.names = NULL)
-cleanBMIData$timeSeriesDataPoint <- cleanBMIData$bmiNumeric
   cleanBMIDataDT <- data.table(cleanBMIData)
   bmi_DT_forMerge <- data.table(cleanBMIDataDT$LinkId, cleanBMIDataDT$dateplustime1, cleanBMIDataDT$bmiNumeric)
   colnames(bmi_DT_forMerge) <- c("LinkId", "bmi_dateplustime1", "bmiNumeric")
   
 cleanRenalData <- read.csv("~/R/GlCoSy/SD_workingSource/renalSetDTclean.csv", sep=",", header = TRUE, row.names = NULL)
-cleanRenalData$timeSeriesDataPoint <- cleanBMIData$egfrNumeric
   cleanRenalDataDT <- data.table(cleanRenalData)
   renal_DT_forMerge <- data.table(cleanRenalDataDT$LinkId, cleanRenalDataDT$dateplustime1, cleanRenalDataDT$egfrNumeric)
-  colnames(bmi_DT_forMerge) <- c("LinkId", "egfr_dateplustime1", "egfrNumeric")
+  colnames(renal_DT_forMerge) <- c("LinkId", "egfr_dateplustime1", "egfrNumeric")
 
 
 # find closest value to diagnosis date for each parameter - sequential merge
@@ -91,40 +89,50 @@ merge_hb[, c("hb_flagClosest") := ifelse(hb_diffFromDiag == min(hb_diffFromDiag)
 merge_hb <- merge_hb[(hb_diffFromDiag < paramFromDiagnosisWindowSeconds) & hb_flagClosest == 1]
 
 # SBP
-merge_sbp <- merge(sbp_DT_forMerge, merge_hb, by = "LinkId")
+merge_sbp <- merge(merge_hb, sbp_DT_forMerge, by = "LinkId")
 merge_sbp[, c("sbp_diffFromDiag") := sqrt((sbp_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
 merge_sbp[, c("sbp_flagClosest") := ifelse(sbp_diffFromDiag == min(sbp_diffFromDiag), 1, 0) , by=.(LinkId)]
 
 merge_sbp <- merge_sbp[(sbp_diffFromDiag < paramFromDiagnosisWindowSeconds) & sbp_flagClosest == 1]
 
-# # DBP
-# merge_dbp <- merge(dbp_DT_forMerge, merge_sbp, by = "LinkId")
-# merge_dbp[, c("dbp_diffFromDiag") := sqrt((dbp_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
-# merge_dbp[, c("dbp_flagClosest") := ifelse(dbp_diffFromDiag == min(dbp_diffFromDiag), 1, 0) , by=.(LinkId)]
-# 
-# merge_dbp <- merge_dbp[(dbp_diffFromDiag < paramFromDiagnosisWindowSeconds) & dbp_flagClosest == 1]
-# merge_dbp <- merge_dbp[sbpNumeric > dbpNumeric]
+# DBP
+merge_dbp <- merge(merge_sbp, dbp_DT_forMerge, by = "LinkId")
+merge_dbp[, c("dbp_diffFromDiag") := sqrt((dbp_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
+merge_dbp[, c("dbp_flagClosest") := ifelse(dbp_diffFromDiag == min(dbp_diffFromDiag), 1, 0) , by=.(LinkId)]
+
+merge_dbp <- merge_dbp[(dbp_diffFromDiag < paramFromDiagnosisWindowSeconds) & dbp_flagClosest == 1]
 
 # BMI
-merge_bmi <- merge(bmi_DT_forMerge, merge_sbp, by = "LinkId")
+merge_bmi <- merge(merge_dbp, bmi_DT_forMerge, by = "LinkId")
 merge_bmi[, c("bmi_diffFromDiag") := sqrt((bmi_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
 merge_bmi[, c("bmi_flagClosest") := ifelse(bmi_diffFromDiag == min(bmi_diffFromDiag), 1, 0) , by=.(LinkId)]
 
 merge_bmi <- merge_bmi[(bmi_diffFromDiag < paramFromDiagnosisWindowSeconds) & bmi_flagClosest == 1]
 
+# renal
+merge_renal <- merge(merge_bmi, renal_DT_forMerge, by = "LinkId")
+merge_renal[, c("egfr_diffFromDiag") := sqrt((egfr_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
+merge_renal[, c("egfr_flagClosest") := ifelse(egfr_diffFromDiag == min(egfr_diffFromDiag), 1, 0) , by=.(LinkId)]
+
+merge_renal <- merge_renal[(egfr_diffFromDiag < paramFromDiagnosisWindowSeconds) & egfr_flagClosest == 1]
+
+
+
+
 # finalset
-diagnostic_test_set <- merge_bmi
+diagnostic_test_set <- merge_renal
 diagnostic_test_set$Sex <- ifelse(diagnostic_test_set$Sex == "Male", 1, 0)
 diagnostic_test_set$diabetesType <- ifelse(diagnostic_test_set$diabetesType == "Type 1 Diabetes Mellitus", 1, 0)
 
 diagnostic_test_set <- diagnostic_test_set[substr(Ethnicity,1,3) != "ECD"]
+diagnostic_test_set$ethnicity[grep(" ", diagnostic_test_set$ethnicity, ignore.case = TRUE)] <- ""
 diagnostic_test_set$ageAtDiagnosis <- (diagnostic_test_set$diagnosisDate_unix - diagnostic_test_set$DOB_unix) / (60*60*24*365.25)
 
-diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Sex, diagnostic_test_set$Ethnicity, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$bmiNumeric, diagnostic_test_set$diabetesType)
+diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Ethnicity, diagnostic_test_set$Sex, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$dbpNumeric,  diagnostic_test_set$bmiNumeric, diagnostic_test_set$egfrNumeric, diagnostic_test_set$diabetesType)
 
-colnames(diagnostic_test_set) <- c("age", "sex", "ethnicity", "hba1c", "sbp", "bmi", "diabetesType")
+colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "egfr", "diabetesType")
 
-write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_8p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 
 
 
