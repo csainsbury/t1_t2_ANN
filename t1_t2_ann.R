@@ -73,6 +73,12 @@ cleanBMIData$timeSeriesDataPoint <- cleanBMIData$bmiNumeric
   cleanBMIDataDT <- data.table(cleanBMIData)
   bmi_DT_forMerge <- data.table(cleanBMIDataDT$LinkId, cleanBMIDataDT$dateplustime1, cleanBMIDataDT$bmiNumeric)
   colnames(bmi_DT_forMerge) <- c("LinkId", "bmi_dateplustime1", "bmiNumeric")
+  
+cleanRenalData <- read.csv("~/R/GlCoSy/SD_workingSource/renalSetDTclean.csv", sep=",", header = TRUE, row.names = NULL)
+cleanRenalData$timeSeriesDataPoint <- cleanBMIData$egfrNumeric
+  cleanRenalDataDT <- data.table(cleanRenalData)
+  renal_DT_forMerge <- data.table(cleanRenalDataDT$LinkId, cleanRenalDataDT$dateplustime1, cleanRenalDataDT$egfrNumeric)
+  colnames(bmi_DT_forMerge) <- c("LinkId", "egfr_dateplustime1", "egfrNumeric")
 
 
 # find closest value to diagnosis date for each parameter - sequential merge
@@ -118,7 +124,7 @@ diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic
 
 colnames(diagnostic_test_set) <- c("age", "sex", "ethnicity", "hba1c", "sbp", "bmi", "diabetesType")
 
-write.table(diagnostic_test_set, file = "./diagSet.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 
 
 
