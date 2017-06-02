@@ -120,19 +120,22 @@ merge_renal <- merge_renal[(egfr_diffFromDiag < paramFromDiagnosisWindowSeconds)
 
 
 # finalset
-diagnostic_test_set <- merge_renal
+diagnostic_test_set <- merge_bmi
 diagnostic_test_set$Sex <- ifelse(diagnostic_test_set$Sex == "Male", 1, 0)
 diagnostic_test_set$diabetesType <- ifelse(diagnostic_test_set$diabetesType == "Type 1 Diabetes Mellitus", 1, 0)
 
 diagnostic_test_set <- diagnostic_test_set[substr(Ethnicity,1,3) != "ECD"]
-diagnostic_test_set$ethnicity[grep(" ", diagnostic_test_set$ethnicity, ignore.case = TRUE)] <- ""
+  factorEthnicity <- factor(diagnostic_test_set$Ethnicity)
+  diagnostic_test_set$Ethnicity <- as.numeric(factorEthnicity)
+
+
 diagnostic_test_set$ageAtDiagnosis <- (diagnostic_test_set$diagnosisDate_unix - diagnostic_test_set$DOB_unix) / (60*60*24*365.25)
 
-diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Ethnicity, diagnostic_test_set$Sex, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$dbpNumeric,  diagnostic_test_set$bmiNumeric, diagnostic_test_set$egfrNumeric, diagnostic_test_set$diabetesType)
+diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Ethnicity, diagnostic_test_set$Sex, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$dbpNumeric,  diagnostic_test_set$bmiNumeric, diagnostic_test_set$diabetesType)
 
-colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "egfr", "diabetesType")
+colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "diabetesType")
 
-write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_8p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 
 
 
