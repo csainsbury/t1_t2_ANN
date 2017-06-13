@@ -137,6 +137,14 @@ colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "d
 
 write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 
+## read in csv output from ann
+## turn ethnicity levels into readable output for physician interpretation
+
+levelKey <- levels(factorEthnicity)
+
+X_test_RN <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/X_test_realNumbers.csv", sep=",", header = FALSE, row.names = NULL)
+y_test    <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/y_test.csv", sep=",", header = FALSE, row.names = NULL)
+y_pred    <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/y_pred.csv", sep=",", header = FALSE, row.names = NULL)
 
 
 
@@ -144,4 +152,6 @@ write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet
 
 
 
-cut_diagDT[, c("timeToHbA1c", "HbA1c_value") := findTimeToNearestHbA1c(LinkId, diagnosisDate_unix) , by=.(LinkId)]
+
+
+# cut_diagDT[, c("timeToHbA1c", "HbA1c_value") := findTimeToNearestHbA1c(LinkId, diagnosisDate_unix) , by=.(LinkId)]
