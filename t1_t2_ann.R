@@ -146,8 +146,83 @@ X_test_RN <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/X_test_realNumbers
 y_test    <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/y_test.csv", sep=",", header = FALSE, row.names = NULL)
 y_pred    <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/y_pred.csv", sep=",", header = FALSE, row.names = NULL)
 
+X_test_RN$ethnicity_decoded <- ""
+levelKey_dummyVarTrapAdj <- levelKey[2: length(levelKey)]
 
 
+for (r in seq(1, nrow(X_test_RN), 1)) {
+  
+  eth_sub <- X_test_RN[r, ][1:24]
+  
+  if (sum(eth_sub) == 0) {
+    X_test_RN$ethnicity_decoded[r] = "nil recorded"
+    }
+  
+  if (sum(eth_sub) == 1) {
+    ethnicityString <- levelKey_dummyVarTrapAdj[eth_sub == 1]
+  }
+  
+  X_test_RN$ethnicity_decoded[r] <- ethnicityString
+  
+}
+
+set.seed(42)
+
+# cut redundant ethnicity keys
+X_test_RN_cut <- X_test_RN[25: ncol(X_test_RN)]
+colnames(X_test_RN_cut) <- c("age", "male", "hba1c", "sbp", "dbp", "bmi", "ethnicity")
+
+X_test_RN_withTrueType <- cbind(X_test_RN_cut, y_test)
+colnames(X_test_RN_withTrueType) <- c("age", "male", "hba1c", "sbp", "dbp", "bmi", "ethnicity", "DMtype")
+
+X_test_RN_withTrueType_withProb <- cbind(X_test_RN_withTrueType, y_pred)
+colnames(X_test_RN_withTrueType_withProb) <- c("age", "male", "hba1c", "sbp", "dbp", "bmi", "ethnicity", "DMtype", "DMpred")
+X_test_RN_withTrueType_withProbDT <- data.table(X_test_RN_withTrueType_withProb)
+
+t1_table <- X_test_RN_withTrueType_withProbDT[DMtype == 1]
+t2_table <- X_test_RN_withTrueType_withProbDT[DMtype == 0]
+
+random_t2_sample <- t2_table[sample(nrow(t2_table), (nrow(t1_table) * 3)), ]
+
+physician_pool <- rbind(t1_table, random_t2_sample)
+
+  # first set - for greg
+    physician_set1 <- physician_pool[sample(nrow(physician_pool), 100), ]
+    
+    physician_set1_write1 <- subset(physician_set1, select = c(1:7))
+    
+    write.table(physician_set1, file = "~/R/_workingDirectory/t1_t2_ANN/output/physician_set1_key.csv", sep = ",", row.names = FALSE)
+    write.table(physician_set1_write1, file = "~/R/_workingDirectory/t1_t2_ANN/output/physician_set1.csv", sep = ",", row.names = FALSE)
+    
+    # automated sets with proportion randomisation
+    
+    # n per sample
+    sample_n <- 100
+    
+    # number of sets
+    set_n <- 40
+    
+    for (ii in seq(1, set_n, 1)) {
+      
+      random_t2_multiplier <- runif(1, 1, 10)
+      
+    #  print(random_t2_multiplier)
+      
+      random_t2_sample <- t2_table[sample(nrow(t2_table), (nrow(t1_table) * random_t2_multiplier)), ]
+      
+      physician_pool <- rbind(t1_table, random_t2_sample)
+      
+      physician_set <- physician_pool[sample(nrow(physician_pool), sample_n), ]
+      
+      physician_set_write <- subset(physician_set, select = c(1:7))
+      
+      keyName <- paste('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_', ii, '_key.csv', sep = '')
+      write.table(physician_set, file = keyName, sep = ",", row.names = FALSE)
+      
+      testSetName <- paste('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_', ii, '.csv', sep = '')
+      write.table(physician_set_write, file = testSetName, sep = ",", row.names = FALSE)
+
+    }
 
 
 
