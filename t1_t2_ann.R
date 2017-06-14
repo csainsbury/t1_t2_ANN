@@ -224,7 +224,18 @@ physician_pool <- rbind(t1_table, random_t2_sample)
 
     }
 
+## analyse performance
+    perf_1 <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_1_done.csv', header = T)
+    perf_1_key <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_1_key.csv', header = T)
+    
+    ann_pred <- ifelse(perf_1_key$DMpred > 0.5, 1, 0)
 
+    cm_phys <- table(perf_1_key$DMtype, perf_1$diagnosis)
+    accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys)
+    
+    cm_ann <- table(perf_1_key$DMtype, ann_pred)
+    accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann)
+    
 
 
 
