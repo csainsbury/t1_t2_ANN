@@ -146,6 +146,22 @@ X_test_RN <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/X_test_realNumbers
 y_test    <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/y_test.csv", sep=",", header = FALSE, row.names = NULL)
 y_pred    <- read.csv("~/R/_workingDirectory/t1_t2_ANN/output/y_pred.csv", sep=",", header = FALSE, row.names = NULL)
 
+        library(ROCR)
+        pred <- prediction(y_pred, y_test)
+        roc.perf <- performance(pred, measure = 'tpr', x.measure = 'fpr')
+        plot(roc.perf)
+        
+        # find sensitvity / specifictiy / optimal cut point
+            opt.cut = function(perf, pred){
+              cut.ind = mapply(FUN=function(x, y, p){
+                d = (x - 0)^2 + (y-1)^2
+                ind = which(d == min(d))
+                c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+                  cutoff = p[[ind]])
+              }, perf@x.values, perf@y.values, pred@cutoffs)
+            }
+            print(opt.cut(roc.perf, pred))
+
 X_test_RN$ethnicity_decoded <- ""
 levelKey_dummyVarTrapAdj <- levelKey[2: length(levelKey)]
 
@@ -225,19 +241,43 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     }
 
 ## analyse performance
+    
+    performanceAnalysis <- function(physicianPrediction, ANNprediction, key, ANNthreshold) {
+      
+      ann_pred <- ifelse(ANNprediction > ANNthreshold, 1, 0)
+      
+      cm_phys <- table(key, physicianPrediction); print(cm_phys)
+      accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys); print(accuracy_phys)
+      
+      cm_ann <- table(key, ann_pred); print(cm_ann)
+      accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann); print(accuracy_ann)
+      
+      pred <- prediction(ANNprediction, key)
+      roc.perf <- performance(pred, measure = 'tpr', x.measure = 'fpr')
+      plot(roc.perf)
+      
+      points((cm_phys[2, 1] / sum(cm_phys[2, ])), (cm_phys[2, 2] / sum(cm_phys[2, ])), col = "red", pch = 16, cex = 2)
+      
+    }
+    
+    
     perf_1 <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_1_done.csv', header = T)
     perf_1_key <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_1_key.csv', header = T)
     
-    ann_pred <- ifelse(perf_1_key$DMpred > 0.5, 1, 0)
-
-    cm_phys <- table(perf_1_key$DMtype, perf_1$diagnosis)
-    accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys)
+    performanceAnalysis(perf_1$diagnosis, perf_1_key$DMpred, perf_1_key$DMtype, 0.05)
     
-    cm_ann <- table(perf_1_key$DMtype, ann_pred)
-    accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann)
+      perf_1 <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_38_CS_done.csv', header = T)
+      perf_1_key <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_38_key.csv', header = T)
     
-
-
+      performanceAnalysis(perf_1$diagnosis, perf_1_key$DMpred, perf_1_key$DMtype, 0.05)
+      
+    
+    ## analyse performance
+    perf_1 <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/physician_set1_GJ130617.csv', header = T)
+    perf_1_key <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/physician_set1_key.csv', header = T)
+    
+    performanceAnalysis(perf_1$diagnosis, perf_1_key$DMpred, perf_1_key$DMtype, 0.05)
+    
 
 
 # cut_diagDT[, c("timeToHbA1c", "HbA1c_value") := findTimeToNearestHbA1c(LinkId, diagnosisDate_unix) , by=.(LinkId)]
