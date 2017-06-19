@@ -21,8 +21,10 @@ findTimeToNearestHbA1c <- function(dmList_LinkId, diagnosisDate_unix) {
 
 # set index date
 index <- "2017-01-01"
-paramFromDiagnosisWindowMonths = 12
+paramFromDiagnosisWindowMonths = 2
 paramFromDiagnosisWindowSeconds = paramFromDiagnosisWindowMonths * (60*60*24*(365.25/12))
+
+numberOfYearsData <- 3 # minimum length of time within the dataset to allow correct diagnosis to have been reached
 
 # diagnosisDataset<-read.csv("../GlCoSy/SDsource/diagnosisDateDeathDate.txt")
 diagnosisDataset<-read.csv("~/R/GlCoSy/SDsource/demogALL.txt", quote = "", 
@@ -47,7 +49,7 @@ diagnosisDatasetDT = data.table(diagnosisDataset)
   cut_diagDT <- cut_diagDT[diabetesType == "Type 1 Diabetes Mellitus" | diabetesType == "Type 2 Diabetes Mellitus"]
   
   # cut to ensure at least 1y data for each
-  cut_diagDT <- cut_diagDT[diagnosisDate_unix < (returnUnixDateTime(index) - (60*60*24*365.25))]
+  cut_diagDT <- cut_diagDT[diagnosisDate_unix < (returnUnixDateTime(index) - ((60*60*24*365.25) * numberOfYearsData))]
 
 # generate node and link files
 cleanHbA1cData <- read.csv("~/R/GlCoSy/SD_workingSource/hba1cDTclean.csv", sep=",", header = TRUE, row.names = NULL)
@@ -135,7 +137,7 @@ diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic
 
 colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "diabetesType")
 
-write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p_2monthWindow_3ydata.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 
 ## read in csv output from ann
 ## turn ethnicity levels into readable output for physician interpretation
@@ -255,6 +257,9 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       pred <- prediction(ANNprediction, key)
       roc.perf <- performance(pred, measure = 'tpr', x.measure = 'fpr')
       plot(roc.perf)
+      
+      auc.perf = performance(pred, measure = "auc")
+      auc.perf@y.values
       
       points((cm_phys[2, 1] / sum(cm_phys[2, ])), (cm_phys[2, 2] / sum(cm_phys[2, ])), col = "red", pch = 16, cex = 2)
       
