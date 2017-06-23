@@ -21,10 +21,10 @@ findTimeToNearestHbA1c <- function(dmList_LinkId, diagnosisDate_unix) {
 
 # set index date
 index <- "2017-01-01"
-paramFromDiagnosisWindowMonths = 2
+paramFromDiagnosisWindowMonths = 12
 paramFromDiagnosisWindowSeconds = paramFromDiagnosisWindowMonths * (60*60*24*(365.25/12))
 
-numberOfYearsData <- 3 # minimum length of time within the dataset to allow correct diagnosis to have been reached
+numberOfYearsData <- 1 # minimum length of time within the dataset to allow correct diagnosis to have been reached
 
 # diagnosisDataset<-read.csv("../GlCoSy/SDsource/diagnosisDateDeathDate.txt")
 diagnosisDataset<-read.csv("~/R/GlCoSy/SDsource/demogALL.txt", quote = "", 
@@ -243,16 +243,20 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     }
 
 ## analyse performance
-    
+    library(caret)
     performanceAnalysis <- function(physicianPrediction, ANNprediction, key, ANNthreshold) {
       
       ann_pred <- ifelse(ANNprediction > ANNthreshold, 1, 0)
       
-      cm_phys <- table(key, physicianPrediction); print(cm_phys)
-      accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys); print(accuracy_phys)
+      print(confusionMatrix(data = physicianPrediction, reference = key))
       
-      cm_ann <- table(key, ann_pred); print(cm_ann)
-      accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann); print(accuracy_ann)
+      # cm_phys <- table(key, physicianPrediction); print(cm_phys)
+      # accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys); print(accuracy_phys)
+      
+      print(confusionMatrix(data = ann_pred, reference = key))
+      
+      # cm_ann <- table(key, ann_pred); print(cm_ann)
+      # accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann); print(accuracy_ann)
       
       pred <- prediction(ANNprediction, key)
       roc.perf <- performance(pred, measure = 'tpr', x.measure = 'fpr')
@@ -260,6 +264,8 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       
       auc.perf = performance(pred, measure = "auc")
       auc.perf@y.values
+      
+      print(auc.perf)
       
       points((cm_phys[2, 1] / sum(cm_phys[2, ])), (cm_phys[2, 2] / sum(cm_phys[2, ])), col = "red", pch = 16, cex = 2)
       
