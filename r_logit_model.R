@@ -35,7 +35,7 @@ classifier = glm(formula = diabetesType ~.,
 # Predicting the Test set results
 prob_pred = predict(classifier, type = 'response', newdata = test_set[-8])
 
-y_pred = ifelse(prob_pred > 0.5, 1, 0)
+y_pred = ifelse(prob_pred > 0.1, 1, 0)
 
 # Making the Confusion Matrix
 cm = table(test_set[, 8], y_pred)
@@ -43,6 +43,7 @@ print(cm)
 accuracy = (cm[1, 1] + cm[2, 2]) / sum(cm)
 print(accuracy)
 
+library(ROCR)
 
 pred <- prediction(prob_pred, test_set[, 8])
 roc.perf <- performance(pred, measure = 'tpr', x.measure = 'fpr')
