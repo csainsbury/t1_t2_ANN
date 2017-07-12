@@ -45,10 +45,14 @@ diagnosisDatasetDT = data.table(diagnosisDataset)
   cut_diagDT$diagnosisDate_unix[is.na(cut_diagDT$diagnosisDate_unix)] <- 0
   cut_diagDT <- cut_diagDT[diagnosisDate_unix > 0]
   
+  # flag first diagnosis and remove all others from dataset
+  cut_diagDT[, c("firstDiagnosis") := ifelse(diagnosisDate_unix == min(diagnosisDate_unix), 1, 0) , by=.(LinkId)]
+  cut_diagDT <- cut_diagDT[firstDiagnosis == 1]
+  
   # cut to T1 or T2
   cut_diagDT <- cut_diagDT[diabetesType == "Type 1 Diabetes Mellitus" | diabetesType == "Type 2 Diabetes Mellitus"]
   
-  # cut to ensure at least 1y data for each
+  # cut to ensure at least 1y data for each ID
   cut_diagDT <- cut_diagDT[diagnosisDate_unix < (returnUnixDateTime(index) - ((60*60*24*365.25) * numberOfYearsData))]
 
 # generate node and link files
@@ -75,10 +79,10 @@ cleanBMIData <- read.csv("~/R/GlCoSy/SD_workingSource/BMISetDTclean.csv", sep=",
   bmi_DT_forMerge <- data.table(cleanBMIDataDT$LinkId, cleanBMIDataDT$dateplustime1, cleanBMIDataDT$bmiNumeric)
   colnames(bmi_DT_forMerge) <- c("LinkId", "bmi_dateplustime1", "bmiNumeric")
   
-cleanRenalData <- read.csv("~/R/GlCoSy/SD_workingSource/renalSetDTclean.csv", sep=",", header = TRUE, row.names = NULL)
-  cleanRenalDataDT <- data.table(cleanRenalData)
-  renal_DT_forMerge <- data.table(cleanRenalDataDT$LinkId, cleanRenalDataDT$dateplustime1, cleanRenalDataDT$egfrNumeric)
-  colnames(renal_DT_forMerge) <- c("LinkId", "egfr_dateplustime1", "egfrNumeric")
+# cleanRenalData <- read.csv("~/R/GlCoSy/SD_workingSource/renalSetDTclean.csv", sep=",", header = TRUE, row.names = NULL)
+#   cleanRenalDataDT <- data.table(cleanRenalData)
+#   renal_DT_forMerge <- data.table(cleanRenalDataDT$LinkId, cleanRenalDataDT$dateplustime1, cleanRenalDataDT$egfrNumeric)
+#   colnames(renal_DT_forMerge) <- c("LinkId", "egfr_dateplustime1", "egfrNumeric")
 
 
 # find closest value to diagnosis date for each parameter - sequential merge
@@ -89,6 +93,7 @@ merge_hb[, c("hb_diffFromDiag") := sqrt((hb_dateplustime1 - diagnosisDate_unix) 
 merge_hb[, c("hb_flagClosest") := ifelse(hb_diffFromDiag == min(hb_diffFromDiag), 1, 0) , by=.(LinkId)]
 
 merge_hb <- merge_hb[(hb_diffFromDiag < paramFromDiagnosisWindowSeconds) & hb_flagClosest == 1]
+merge_hb <- merge_hb[diff(merge_hb$LinkId) != 0]
 
 # SBP
 merge_sbp <- merge(merge_hb, sbp_DT_forMerge, by = "LinkId")
@@ -96,6 +101,8 @@ merge_sbp[, c("sbp_diffFromDiag") := sqrt((sbp_dateplustime1 - diagnosisDate_uni
 merge_sbp[, c("sbp_flagClosest") := ifelse(sbp_diffFromDiag == min(sbp_diffFromDiag), 1, 0) , by=.(LinkId)]
 
 merge_sbp <- merge_sbp[(sbp_diffFromDiag < paramFromDiagnosisWindowSeconds) & sbp_flagClosest == 1]
+merge_sbp <- merge_sbp[diff(merge_sbp$LinkId) != 0]
+
 
 # DBP
 merge_dbp <- merge(merge_sbp, dbp_DT_forMerge, by = "LinkId")
@@ -103,6 +110,7 @@ merge_dbp[, c("dbp_diffFromDiag") := sqrt((dbp_dateplustime1 - diagnosisDate_uni
 merge_dbp[, c("dbp_flagClosest") := ifelse(dbp_diffFromDiag == min(dbp_diffFromDiag), 1, 0) , by=.(LinkId)]
 
 merge_dbp <- merge_dbp[(dbp_diffFromDiag < paramFromDiagnosisWindowSeconds) & dbp_flagClosest == 1]
+merge_dbp <- merge_dbp[diff(merge_dbp$LinkId) != 0]
 
 # BMI
 merge_bmi <- merge(merge_dbp, bmi_DT_forMerge, by = "LinkId")
@@ -110,19 +118,22 @@ merge_bmi[, c("bmi_diffFromDiag") := sqrt((bmi_dateplustime1 - diagnosisDate_uni
 merge_bmi[, c("bmi_flagClosest") := ifelse(bmi_diffFromDiag == min(bmi_diffFromDiag), 1, 0) , by=.(LinkId)]
 
 merge_bmi <- merge_bmi[(bmi_diffFromDiag < paramFromDiagnosisWindowSeconds) & bmi_flagClosest == 1]
+merge_bmi <- merge_bmi[diff(merge_bmi$LinkId) != 0]
+
 
 # renal
-merge_renal <- merge(merge_bmi, renal_DT_forMerge, by = "LinkId")
-merge_renal[, c("egfr_diffFromDiag") := sqrt((egfr_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
-merge_renal[, c("egfr_flagClosest") := ifelse(egfr_diffFromDiag == min(egfr_diffFromDiag), 1, 0) , by=.(LinkId)]
-
-merge_renal <- merge_renal[(egfr_diffFromDiag < paramFromDiagnosisWindowSeconds) & egfr_flagClosest == 1]
-
-
-
+# merge_renal <- merge(merge_bmi, renal_DT_forMerge, by = "LinkId")
+# merge_renal[, c("egfr_diffFromDiag") := sqrt((egfr_dateplustime1 - diagnosisDate_unix) ^ 2) , by=.(LinkId)]
+# merge_renal[, c("egfr_flagClosest") := ifelse(egfr_diffFromDiag == min(egfr_diffFromDiag), 1, 0) , by=.(LinkId)]
+# 
+# merge_renal <- merge_renal[(egfr_diffFromDiag < paramFromDiagnosisWindowSeconds) & egfr_flagClosest == 1]
 
 # finalset
 diagnostic_test_set <- merge_bmi
+
+# remove duplicates
+#diagnostic_test_set <- unique(diagnostic_test_set)
+
 diagnostic_test_set$Sex <- ifelse(diagnostic_test_set$Sex == "Male", 1, 0)
 diagnostic_test_set$diabetesType <- ifelse(diagnostic_test_set$diabetesType == "Type 1 Diabetes Mellitus", 1, 0)
 
@@ -130,14 +141,19 @@ diagnostic_test_set <- diagnostic_test_set[substr(Ethnicity,1,3) != "ECD"]
   factorEthnicity <- factor(diagnostic_test_set$Ethnicity)
   diagnostic_test_set$Ethnicity <- as.numeric(factorEthnicity)
 
-
 diagnostic_test_set$ageAtDiagnosis <- (diagnostic_test_set$diagnosisDate_unix - diagnostic_test_set$DOB_unix) / (60*60*24*365.25)
+
+diagnostic_test_set_withID <- data.table(diagnostic_test_set$LinkId, diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Ethnicity, diagnostic_test_set$Sex, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$dbpNumeric,  diagnostic_test_set$bmiNumeric, diagnostic_test_set$diabetesType)
+
+colnames(diagnostic_test_set_withID) <- c("LinkId", "age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "diabetesType")
 
 diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Ethnicity, diagnostic_test_set$Sex, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$dbpNumeric,  diagnostic_test_set$bmiNumeric, diagnostic_test_set$diabetesType)
 
 colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "diabetesType")
 
-write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p_2monthWindow_3ydata.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+write.table(diagnostic_test_set_withID, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p_withID.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+
 
 ## read in csv output from ann
 ## turn ethnicity levels into readable output for physician interpretation
@@ -212,7 +228,7 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     write.table(physician_set1, file = "~/R/_workingDirectory/t1_t2_ANN/output/physician_set1_key.csv", sep = ",", row.names = FALSE)
     write.table(physician_set1_write1, file = "~/R/_workingDirectory/t1_t2_ANN/output/physician_set1.csv", sep = ",", row.names = FALSE)
     
-    # automated sets with proportion randomisation
+# automated sets with proportion randomisation
     
     # n per sample
     sample_n <- 100
@@ -244,19 +260,20 @@ physician_pool <- rbind(t1_table, random_t2_sample)
 
 ## analyse performance
     library(caret)
+    library(ROCR)
     performanceAnalysis <- function(physicianPrediction, ANNprediction, key, ANNthreshold) {
       
       ann_pred <- ifelse(ANNprediction > ANNthreshold, 1, 0)
       
       print(confusionMatrix(data = physicianPrediction, reference = key))
       
-      # cm_phys <- table(key, physicianPrediction); print(cm_phys)
-      # accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys); print(accuracy_phys)
+      cm_phys <- table(key, physicianPrediction); print(cm_phys)
+      accuracy_phys <- (cm_phys[1,1] + cm_phys[2,2]) / sum(cm_phys); print(accuracy_phys)
       
       print(confusionMatrix(data = ann_pred, reference = key))
       
-      # cm_ann <- table(key, ann_pred); print(cm_ann)
-      # accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann); print(accuracy_ann)
+      cm_ann <- table(key, ann_pred); print(cm_ann)
+      accuracy_ann <- (cm_ann[1,1] + cm_ann[2,2]) / sum(cm_ann); print(accuracy_ann)
       
       pred <- prediction(ANNprediction, key)
       roc.perf <- performance(pred, measure = 'tpr', x.measure = 'fpr')
@@ -268,6 +285,8 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       print(auc.perf)
       
       points((cm_phys[2, 1] / sum(cm_phys[2, ])), (cm_phys[2, 2] / sum(cm_phys[2, ])), col = "red", pch = 16, cex = 2)
+      points((cm_ann[2, 1] / sum(cm_ann[2, ])), (cm_ann[2, 2] / sum(cm_ann[2, ])), col = "blue", pch = 16, cex = 2)
+      
       
     }
     
@@ -291,4 +310,51 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     
 
 
-# cut_diagDT[, c("timeToHbA1c", "HbA1c_value") := findTimeToNearestHbA1c(LinkId, diagnosisDate_unix) , by=.(LinkId)]
+## reconstruct original ID list
+    
+    nameList_physicianResults <- c('physician_set_1_done', 'physician_set_6', 'physician_set_11', 'physician_set_16', 'physician_set_22', 'physician_set_38')
+    nameList_keys <- c('physician_set_1_key', 'physician_set_6_key', 'physician_set_11_key', 'physician_set_16_key', 'physician_set_22_key', 'physician_set_38_key')
+    
+    for (k in seq(1, length(nameList_physicianResults), 1)) {
+      
+      phys_name <- paste('~/R/_workingDirectory/t1_t2_ANN/output/completedSets/',nameList_physicianResults[k], '.csv', sep = '')
+      key_name <- paste('~/R/_workingDirectory/t1_t2_ANN/output/completedSets/',nameList_keys[k], '.csv', sep = '')
+      
+      physicianSet <- read.table(phys_name, header = T, row.names = NULL, sep = ',')
+        colnames(physicianSet) <- c('age', 'male', 'hba1c', 'sbp', 'dbp', 'bmi', 'ethnicity', 'diagnosis')
+      keySet <- read.table(key_name, header = T, row.names = NULL, sep = ',')
+      
+      keySet$physicianDiagnosis <- physicianSet$diagnosis
+      
+      set_includingIDs <- merge(keySet, as.data.frame(diagnostic_test_set_withID), by.x = c("hba1c", "sbp", "dbp",  "bmi"), by.y = c("hba1c", "sbp", "dbp",  "bmi"))
+      set_includingIDs <- unique(set_includingIDs)
+      
+      if (k == 1) { outputFrame <- set_includingIDs }
+      if (k > 1)  { outputFrame <- rbind(outputFrame, set_includingIDs) }
+      
+    }
+    
+    write.table(outputFrame, file = "~/R/_workingDirectory/t1_t2_ANN/outputFrame.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+    
+    performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$DMpred, outputFrame$DMtype, 0.1)
+    
+    ########### run r_logit_model and come back
+    
+    logitInput <- read.csv("~/R/_workingDirectory/t1_t2_ANN/logit_output.csv")
+    logitInput <- data.table(logitInput)
+    logitInput = unique(logitInput)
+    
+    outputFrame$prob_pred <- (-1)
+    
+    for (j in seq(1, nrow(outputFrame), 1)) {
+      
+      idOfInterest <- outputFrame$LinkId[j]
+      logitSub <- logitInput[LinkId == idOfInterest]
+      
+      if(nrow(logitSub == 1)) {
+        outputFrame$prob_pred[j] <- logitSub$prob_pred
+      }
+      
+    }
+    
+    
