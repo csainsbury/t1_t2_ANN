@@ -48,6 +48,12 @@ trainSet <- subset(allDataFlaggedForTestSet, inFullTestSet == 0)
 training_set <- data.frame(trainSet$age.x, trainSet$ethnicity.x, trainSet$sex.x, trainSet$hba1c, trainSet$sbp, trainSet$dbp.x, trainSet$bmi, trainSet$diabetesType.x)
 colnames(training_set) <- c('age', 'ethnicity', 'sex', 'hba1c', 'sbp', 'dbp', 'bmi','diabetesType')
 
+    ## for export for ann
+    datasetWithFlag_forExport <- data.frame(allDataFlaggedForTestSet$age.x, allDataFlaggedForTestSet$ethnicity.x, allDataFlaggedForTestSet$sex.x, allDataFlaggedForTestSet$hba1c, allDataFlaggedForTestSet$sbp, allDataFlaggedForTestSet$dbp.x, allDataFlaggedForTestSet$bmi, allDataFlaggedForTestSet$inFullTestSet, allDataFlaggedForTestSet$diabetesType.x)
+    colnames(datasetWithFlag_forExport) <- c('age', 'ethnicity', 'sex', 'hba1c', 'sbp', 'dbp', 'bmi', 'inFullTestSet','diabetesType')
+    
+    write.table(datasetWithFlag_forExport, file = "~/R/_workingDirectory/t1_t2_ANN/datasetWithFlag_forExport.csv", sep = ",", row.names = FALSE, col.names = TRUE)
+
 # Feature Scaling
 training_set[1] = scale(training_set[1])
 training_set[4:7] = scale(training_set[4:7])
@@ -88,6 +94,16 @@ plot(roc.perf)
 
 auc.perf = performance(pred, measure = "auc")
 auc.perf@y.values
+
+opt.cut = function(perf, pred){
+  cut.ind = mapply(FUN=function(x, y, p){
+    d = (x - 0)^2 + (y-1)^2
+    ind = which(d == min(d))
+    c(sensitivity = y[[ind]], specificity = 1-x[[ind]], 
+      cutoff = p[[ind]])
+  }, perf@x.values, perf@y.values, pred@cutoffs)
+}
+print(opt.cut(roc.perf, pred))
 
 exportLogit <- data.frame(subset(datasetWithFlag, flagInTestSet == 1), prob_pred)
 write.table(exportLogit, file = "~/R/_workingDirectory/t1_t2_ANN/logit_output.csv", sep = ",", row.names = FALSE, col.names = TRUE)
