@@ -333,6 +333,9 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       set_includingIDs <- merge(keySet, as.data.frame(diagnostic_test_set_withID), by.x = c("hba1c", "sbp", "dbp",  "bmi"), by.y = c("hba1c", "sbp", "dbp",  "bmi"))
       set_includingIDs <- unique(set_includingIDs)
       
+      # if running individual file, use this statement
+      # outputFrame <- set_includingIDs
+      
       if (k == 1) { outputFrame <- set_includingIDs }
       if (k > 1)  { outputFrame <- rbind(outputFrame, set_includingIDs) }
       
@@ -340,6 +343,7 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     
     write.table(outputFrame, file = "~/R/_workingDirectory/t1_t2_ANN/outputFrame.csv", sep = ",", row.names = FALSE, col.names = TRUE)
     
+    # performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$DMpred, outputFrame$DMtype, 0.04306091)
     performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$DMpred, outputFrame$DMtype, 0.1)
     
     ########### run r_logit_model.R and come back
@@ -362,11 +366,12 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       
     }
     
+    # performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$prob_pred, outputFrame$DMtype, 0.06596188)
     performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$prob_pred, outputFrame$DMtype, 0.1)
     
     
     outputFrame$ann_binary <- ifelse(outputFrame$DMpred > 0.1, 1, 0)
-    outputFrame$logit_binary <- ifelse(outputFrame$prob_pred > 0.06596188, 1, 0)
+    outputFrame$logit_binary <- ifelse(outputFrame$prob_pred > 0.1, 1, 0)
     
     physicianConcordance_ann <- sum(ifelse((outputFrame$ann_binary == 1 & outputFrame$physicianDiagnosis == 1) | (outputFrame$ann_binary == 0 & outputFrame$physicianDiagnosis == 0), 1, 0)) / nrow(outputFrame)
     print(physicianConcordance_ann)
