@@ -138,6 +138,9 @@ diagnostic_test_set$Sex <- ifelse(diagnostic_test_set$Sex == "Male", 1, 0)
 diagnostic_test_set$diabetesType <- ifelse(diagnostic_test_set$diabetesType == "Type 1 Diabetes Mellitus", 1, 0)
 
 diagnostic_test_set <- diagnostic_test_set[substr(Ethnicity,1,3) != "ECD"]
+# table(diagnostic_test_set$Ethnicity)
+# table(subset(diagnostic_test_set, diabetesType == 1)$Ethnicity)
+# table(subset(diagnostic_test_set, diabetesType == 0)$Ethnicity)
   factorEthnicity <- factor(diagnostic_test_set$Ethnicity)
   diagnostic_test_set$Ethnicity <- as.numeric(factorEthnicity)
 
@@ -150,6 +153,11 @@ colnames(diagnostic_test_set_withID) <- c("LinkId", "age", "ethnicity", "sex", "
 diagnostic_test_set <- data.table(diagnostic_test_set$ageAtDiagnosis, diagnostic_test_set$Ethnicity, diagnostic_test_set$Sex, diagnostic_test_set$hba1cNumeric, diagnostic_test_set$sbpNumeric, diagnostic_test_set$dbpNumeric,  diagnostic_test_set$bmiNumeric, diagnostic_test_set$diabetesType)
 
 colnames(diagnostic_test_set) <- c("age", "ethnicity", "sex", "hba1c", "sbp", "dbp", "bmi", "diabetesType")
+
+# summary(diagnostic_test_set)
+# summary(subset(diagnostic_test_set, diabetesType == 1))
+# summary(subset(diagnostic_test_set, diabetesType == 0))
+
 
 write.table(diagnostic_test_set, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p.csv", sep = ",", row.names = FALSE, col.names = TRUE)
 write.table(diagnostic_test_set_withID, file = "~/R/_workingDirectory/t1_t2_ANN/diagSet_7p_withID.csv", sep = ",", row.names = FALSE, col.names = TRUE)
