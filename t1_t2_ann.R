@@ -261,6 +261,7 @@ physician_pool <- rbind(t1_table, random_t2_sample)
 ## analyse performance
     library(caret)
     library(ROCR)
+    
     performanceAnalysis <- function(physicianPrediction, ANNprediction, key, ANNthreshold) {
       
       ann_pred <- ifelse(ANNprediction > ANNthreshold, 1, 0)
@@ -290,7 +291,6 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       
     }
     
-    
     perf_1 <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_1_done.csv', header = T)
     perf_1_key <- read.csv('~/R/_workingDirectory/t1_t2_ANN/output/samplesForTesting/physician_set_1_key.csv', header = T)
     
@@ -311,6 +311,8 @@ physician_pool <- rbind(t1_table, random_t2_sample)
 
 
 ## reconstruct original ID list
+###############################################################################################
+    ## 140717 run from here
     
     diagnostic_test_set_withID <- read.csv("~/R/_workingDirectory/t1_t2_ANN/diagSet_7p_withID.csv")
     
@@ -338,7 +340,7 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     
     write.table(outputFrame, file = "~/R/_workingDirectory/t1_t2_ANN/outputFrame.csv", sep = ",", row.names = FALSE, col.names = TRUE)
     
-    performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$DMpred, outputFrame$DMtype, 0.04306091)
+    performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$DMpred, outputFrame$DMtype, 0.1)
     
     ########### run r_logit_model.R and come back
     
@@ -359,6 +361,9 @@ physician_pool <- rbind(t1_table, random_t2_sample)
       }
       
     }
+    
+    performanceAnalysis(outputFrame$physicianDiagnosis, outputFrame$prob_pred, outputFrame$DMtype, 0.1)
+    
     
     outputFrame$ann_binary <- ifelse(outputFrame$DMpred > 0.1, 1, 0)
     outputFrame$logit_binary <- ifelse(outputFrame$prob_pred > 0.06596188, 1, 0)
@@ -386,11 +391,31 @@ physician_pool <- rbind(t1_table, random_t2_sample)
     plot(outputFrame$bmi, outputFrame$prob_pred)
     
     plot(outputFrame$age.x, outputFrame$DMpred)
+    
     ann_age_boxplot <- boxplot(outputFrame$DMpred ~ cut(outputFrame$age.x, breaks = seq(0, 100, 5)))
     logit_age_boxplot <- boxplot(outputFrame$prob_pred ~ cut(outputFrame$age.x, breaks = seq(0, 100, 5)))
     
     plot(ann_age_boxplot$stats[3, ]); lines(ann_age_boxplot$stats[3, ])
     points(logit_age_boxplot$stats[3, ], col = 'red'); lines(logit_age_boxplot$stats[3, ], col = 'red')
+    
+      ann_bmi_boxplot <- boxplot(outputFrame$DMpred ~ cut(outputFrame$bmi, breaks = seq(10, 50, 2)))
+      logit_bmi_boxplot <- boxplot(outputFrame$prob_pred ~ cut(outputFrame$bmi, breaks = seq(10, 50, 2)))
+      
+      plot(ann_bmi_boxplot$stats[3, ]); lines(ann_bmi_boxplot$stats[3, ])
+      points(logit_bmi_boxplot$stats[3, ], col = 'red'); lines(logit_bmi_boxplot$stats[3, ], col = 'red')
+      
+    ann_hba1c_boxplot <- boxplot(outputFrame$DMpred ~ cut(outputFrame$hba1c, breaks = seq(10, 100, 5)))
+    logit_hba1c_boxplot <- boxplot(outputFrame$prob_pred ~ cut(outputFrame$hba1c, breaks = seq(10, 100, 5)))
+    
+    plot(ann_hba1c_boxplot$stats[3, ]); lines(ann_hba1c_boxplot$stats[3, ])
+    points(logit_hba1c_boxplot$stats[3, ], col = 'red'); lines(logit_hba1c_boxplot$stats[3, ], col = 'red')
+    
+      ann_sbp_boxplot <- boxplot(outputFrame$DMpred ~ cut(outputFrame$sbp, breaks = seq(80, 200, 10)))
+      logit_sbp_boxplot <- boxplot(outputFrame$prob_pred ~ cut(outputFrame$sbp, breaks = seq(80, 200, 10)))
+      
+      plot(ann_sbp_boxplot$stats[3, ]); lines(ann_sbp_boxplot$stats[3, ])
+      points(logit_sbp_boxplot$stats[3, ], col = 'red'); lines(logit_sbp_boxplot$stats[3, ], col = 'red')
+    
     
     
     plot(outputFrame$age.x, outputFrame$prob_pred)
